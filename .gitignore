@@ -1,0 +1,22 @@
+# Entornos virtuales de Python
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.pyc
+
+# Archivos de sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Configuración privada/local de Obsidian
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+.obsidian/appearance.json
+
+# Archivos temporales de Office y editores
+~$*
+*.tmp
+*.log

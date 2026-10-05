@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador Interactivo de Riesgo - Máster de Riesgos</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --accent: #38bdf8;
+      --text: #f1f5f9;
+      --muted: #94a3b8;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --success: #10b981;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding: 2rem; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+    .container { max-width: 900px; width: 100%; display: flex; flex-direction: column; gap: 1.5rem; }
+    header { text-align: center; margin-bottom: 1rem; }
+    header h1 { font-size: 2rem; color: var(--accent); margin-bottom: 0.5rem; }
+    header p { color: var(--muted); }
+    .quote { font-style: italic; background: rgba(56, 189, 248, 0.1); border-left: 4px solid var(--accent); padding: 0.8rem 1rem; border-radius: 4px; font-size: 0.9rem; margin-top: 0.5rem; }
+    
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+    
+    .card { background: var(--card-bg); padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.05); }
+    .card h2 { font-size: 1.25rem; margin-bottom: 1rem; color: #e2e8f0; display: flex; align-items: center; gap: 0.5rem; }
+    
+    .control-group { margin-bottom: 1.2rem; }
+    .control-group label { display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 0.4rem; color: var(--muted); }
+    .control-group label span.val { color: var(--accent); font-weight: bold; }
+    input[type=range] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+    
+    .results { display: flex; flex-direction: column; gap: 1rem; }
+    .metric { background: #0f172a; padding: 1rem; border-radius: 8px; border-left: 4px solid var(--accent); }
+    .metric-label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .metric-value { font-size: 1.8rem; font-weight: bold; margin-top: 0.2rem; color: #fff; }
+    
+    #stress-btn { width: 100%; padding: 0.8rem; background: linear-gradient(135deg, #ef4444, #b91c1c); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: transform 0.1s, opacity 0.2s; }
+    #stress-btn:hover { opacity: 0.9; }
+    #stress-btn:active { transform: scale(0.98); }
+    
+    .gauge-container { position: relative; width: 100%; height: 16px; background: #334155; border-radius: 8px; overflow: hidden; margin-top: 0.5rem; }
+    .gauge-bar { height: 100%; width: 30%; background: var(--success); transition: width 0.3s, background-color 0.3s; }
+    
+    canvas { width: 100%; height: 160px; background: #0f172a; border-radius: 8px; margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>⚡ Simulador Interactivo de Riesgo & VaR</h1>
+      <p>Exploración dinámica de parámetros para el Máster de Riesgos</p>
+      <div class="quote">"Coñécete a ti mesmo... e afasta os meigallos financeiros." — Inspirado en Fefiñáns & O Conxuro</div>
+    </header>
+
+    <div class="grid">
+      <!-- Panel de Controles -->
+      <div class="card">
+        <h2>🎛️ Parámetros de la Cartera</h2>
+        
+        <div class="control-group">
+          <label>Exposición Total (EAD): <span class="val" id="val-ead">1.000.000 €</span></label>
+          <input type="range" id="param-ead" min="100000" max="10000000" step="100000" value="1000000">
+        </div>
+
+        <div class="control-group">
+          <label>Probabilidad de Default (PD): <span class="val" id="val-pd">2.5%</span></label>
+          <input type="range" id="param-pd" min="0.1" max="20" step="0.1" value="2.5">
+        </div>
+
+        <div class="control-group">
+          <label>Pérdida en Caso de Impago (LGD): <span class="val" id="val-lgd">45%</span></label>
+          <input type="range" id="param-lgd" min="5" max="100" step="1" value="45">
+        </div>
+
+        <div class="control-group">
+          <label>Volatilidad del Mercado (&sigma;): <span class="val" id="val-vol">15%</span></label>
+          <input type="range" id="param-vol" min="5" max="60" step="1" value="15">
+        </div>
+
+        <button id="stress-btn">🔥 Simular Escenario de Estrés Extremo (Shock)</button>
+      </div>
+
+      <!-- Panel de Métricas y Gráfico -->
+      <div class="card">
+        <h2>📊 Métricas Cuantitativas</h2>
+        <div class="results">
+          <div class="metric" id="metric-el-box">
+            <div class="metric-label">Pérdida Esperada (Expected Loss - EL)</div>
+            <div class="metric-value" id="res-el">11.250 €</div>
+            <div class="gauge-container">
+              <div class="gauge-bar" id="gauge-el"></div>
+            </div>
+          </div>
+
+          <div class="metric" id="metric-var-box">
+            <div class="metric-label">Value at Risk Paramétrico (VaR 99% - 10 días)</div>
+            <div class="metric-value" id="res-var">109.890 €</div>
+            <div class="gauge-container">
+              <div class="gauge-bar" id="gauge-var" style="background: var(--warning);"></div>
+            </div>
+          </div>
+        </div>
+
+        <canvas id="distChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const eadInput = document.getElementById('param-ead');
+    const pdInput = document.getElementById('param-pd');
+    const lgdInput = document.getElementById('param-lgd');
+    const volInput = document.getElementById('param-vol');
+    const stressBtn = document.getElementById('stress-btn');
+
+    const valEad = document.getElementById('val-ead');
+    const valPd = document.getElementById('val-pd');
+    const valLgd = document.getElementById('val-lgd');
+    const valVol = document.getElementById('val-vol');
+
+    const resEl = document.getElementById('res-el');
+    const resVar = document.getElementById('res-var');
+    const gaugeEl = document.getElementById('gauge-el');
+    const gaugeVar = document.getElementById('gauge-var');
+    const canvas = document.getElementById('distChart');
+    const ctx = canvas.getContext('2d');
+
+    let isStressed = false;
+
+    function formatCurrency(num) {
+      return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(num);
+    }
+
+    function drawDistribution(vol) {
+      canvas.width = canvas.parentElement.clientWidth - 48;
+      canvas.height = 140;
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      ctx.beginPath();
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 2;
+
+      const mean = w / 2;
+      const std = (vol / 50) * (w / 6) + 15;
+
+      for (let x = 0; x < w; x++) {
+        const y = h - 20 - (Math.exp(-0.5 * Math.pow((x - mean) / std, 2)) * (h - 40));
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Zona VaR (Cola izquierda)
+      const varThreshold = mean - 2.33 * std;
+      ctx.fillStyle = 'rgba(239, 68, 68, 0.4)';
+      ctx.beginPath();
+      ctx.moveTo(0, h - 20);
+      for (let x = 0; x <= varThreshold; x++) {
+        const y = h - 20 - (Math.exp(-0.5 * Math.pow((x - mean) / std, 2)) * (h - 40));
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(varThreshold, h - 20);
+      ctx.closePath();
+      ctx.fill();
+
+      // Etiqueta
+      ctx.fillStyle = '#ef4444';
+      ctx.font = '10px sans-serif';
+      ctx.fillText('Cola VaR 99%', Math.max(10, varThreshold - 30), h - 5);
+    }
+
+    function calculate() {
+      const ead = parseFloat(eadInput.value);
+      const pd = parseFloat(pdInput.value) / 100;
+      const lgd = parseFloat(lgdInput.value) / 100;
+      const vol = parseFloat(volInput.value) / 100;
+
+      valEad.innerText = formatCurrency(ead);
+      valPd.innerText = (pd * 100).toFixed(1) + '%';
+      valLgd.innerText = (lgd * 100).toFixed(0) + '%';
+      valVol.innerText = (vol * 100).toFixed(0) + '%';
+
+      // Pérdida Esperada: EL = PD * EAD * LGD
+      const el = ead * pd * lgd;
+      resEl.innerText = formatCurrency(el);
+
+      // VaR 99% 10 días aproximado paramétrico: Z(99%) = 2.326, sqrt(10/252)
+      const timeHorizon = Math.sqrt(10 / 252);
+      const var99 = ead * 2.326 * vol * timeHorizon;
+      resVar.innerText = formatCurrency(var99);
+
+      // Medidores
+      const elPercent = Math.min(100, (el / (ead * 0.1)) * 100);
+      gaugeEl.style.width = elPercent + '%';
+      gaugeEl.style.backgroundColor = elPercent > 50 ? 'var(--danger)' : (elPercent > 20 ? 'var(--warning)' : 'var(--success)');
+
+      const varPercent = Math.min(100, (var99 / (ead * 0.3)) * 100);
+      gaugeVar.style.width = varPercent + '%';
+      gaugeVar.style.backgroundColor = varPercent > 60 ? 'var(--danger)' : 'var(--warning)';
+
+      drawDistribution(parseFloat(volInput.value));
+    }
+
+    [eadInput, pdInput, lgdInput, volInput].forEach(el => el.addEventListener('input', () => {
+      isStressed = false;
+      stressBtn.innerText = '🔥 Simular Escenario de Estrés Extremo (Shock)';
+      calculate();
+    }));
+
+    stressBtn.addEventListener('click', () => {
+      if (!isStressed) {
+        pdInput.value = 14.5;
+        volInput.value = 48;
+        lgdInput.value = 75;
+        stressBtn.innerText = '🔄 Revertir Escenario de Estrés';
+        isStressed = true;
+      } else {
+        pdInput.value = 2.5;
+        volInput.value = 15;
+        lgdInput.value = 45;
+        stressBtn.innerText = '🔥 Simular Escenario de Estrés Extremo (Shock)';
+        isStressed = false;
+      }
+      calculate();
+    });
+
+    window.addEventListener('resize', () => drawDistribution(parseFloat(volInput.value)));
+    calculate();
+  </script>
+</body>
+</html>
